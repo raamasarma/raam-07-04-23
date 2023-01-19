@@ -1,8 +1,13 @@
 package com.raithanna.dairy.RaithannaDairy.controller;
 
 import com.raithanna.dairy.RaithannaDairy.models.*;
-import com.raithanna.dairy.RaithannaDairy.repositories.*;
+import com.raithanna.dairy.RaithannaDairy.repositories.CustomerRepository;
+import com.raithanna.dairy.RaithannaDairy.repositories.DailySalesRepository;
+import com.raithanna.dairy.RaithannaDairy.repositories.ProductMasterRepository;
+import com.raithanna.dairy.RaithannaDairy.repositories.SaleOrderRepository;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -30,12 +35,9 @@ public class orderController {
     @Autowired
     private SaleOrderRepository saleOrderRepository;
 
-    @Autowired
-   private UserModelRepository userModelRepository;
-
     @RequestMapping("/createOrder")
-    public String createOrder_html(Model model, HttpSession session){
-        if (session.getAttribute("loggedIn").equals("yes")){
+    public String createOrder_html(Model model, HttpSession session) {
+        if (session.getAttribute("loggedIn").equals("yes")) {
             Iterable<customer> CustomersIterable = customerRepository.findAll();
             Iterable<dailySales> dailysales = dailySalesRepository.findAll();
             List<Integer> orderNos = new ArrayList<>();
@@ -72,26 +74,28 @@ public class orderController {
         model.addAttribute("messages", messages);
         return "redirect:/login";
     }
-    @PostMapping( "/getproductValues")
-    public ResponseEntity<?> getproductRatesByCustcode(@RequestParam Map<String,String> body, Model model){
+
+    @PostMapping("/getproductValues")
+    public ResponseEntity<?> getproductRatesByCustcode(@RequestParam Map<String, String> body, Model model) {
         System.out.println(body);
         productMaster product = productMasterRepository.findBySplCustCodeAndPCode(body.get("code"), body.get("pcode"));
         productMaster commonproduct = productMasterRepository.findBySplCustCodeAndPCode("", body.get("pcode"));
-        if(product == null){
+        if (product == null) {
             product = commonproduct;
         }
 
         System.out.println(product);
         model.addAttribute("products", product);
-        Map<String,String> respBody = new HashMap<>();
+        Map<String, String> respBody = new HashMap<>();
         respBody.putIfAbsent("specialValue", String.valueOf(product.getUnitRate() - Integer.parseInt(body.get("disc"))));
         respBody.putIfAbsent("commonValue", String.valueOf(commonproduct.getUnitRate()));
-        respBody.putIfAbsent("amount", String.valueOf((product.getUnitRate()*Integer.parseInt(body.get("qty")))));
-        respBody.putIfAbsent("ttlValue", String.valueOf((product.getUnitRate()-Integer.parseInt(body.get("disc")))*Integer.parseInt(body.get("qty"))));
+        respBody.putIfAbsent("amount", String.valueOf((product.getUnitRate() * Integer.parseInt(body.get("qty")))));
+        respBody.putIfAbsent("ttlValue", String.valueOf((product.getUnitRate() - Integer.parseInt(body.get("disc"))) * Integer.parseInt(body.get("qty"))));
         return ResponseEntity.ok(respBody);
     }
+
     @PostMapping("/createOrder")
-    public String createOrder(Model model, @ModelAttribute dailySales order,@RequestParam Map<String,String> orderDetails, HttpServletRequest request, HttpSession session) throws InterruptedException {
+    public String createOrder(Model model, @ModelAttribute dailySales order, @RequestParam Map<String, String> orderDetails, HttpServletRequest request, HttpSession session) throws InterruptedException {
         List<String> messages = new ArrayList<>();
         System.out.println(orderDetails);
         order.setOrderNo(Integer.parseInt(orderDetails.get("orderDetails[orderNo]")));
@@ -104,27 +108,26 @@ public class orderController {
         order.setUnitRate(Double.parseDouble(orderDetails.get("orderDetails[unitRate]")));
         System.out.println(order);
         System.out.println("@107");
-        try{
-            dailySalesRepository.save(order);}
-
-        catch (Exception handlerException){
+        try {
+            dailySalesRepository.save(order);
+        } catch (Exception handlerException) {
             messages.add("Error Creating the order pls retry");
-            model.addAttribute("messages",messages);
+            model.addAttribute("messages", messages);
             return "/createOrder";
         }
-        model.addAttribute("messages",messages);
+        model.addAttribute("messages", messages);
         return "redirect:/";
     }
 
     @PostMapping("/createSaleOrder")
-    public String createSaleOrder(@RequestParam String orderNo){
+    public String createSaleOrder(@RequestParam String orderNo) {
         List<dailySales> orderProducts = dailySalesRepository.findByOrderNo(Integer.parseInt(orderNo));
 
-        while (true){
-            if (orderProducts.isEmpty()){
+        while (true) {
+            if (orderProducts.isEmpty()) {
                 orderProducts = dailySalesRepository.findByOrderNo(Integer.parseInt(orderNo));
-            }else{
-            break;
+            } else {
+                break;
             }
         }
         System.out.println(orderProducts.size());
@@ -145,7 +148,7 @@ public class orderController {
         saleorder.setOrderNo(Integer.parseInt(orderNo));
         saleorder.setAmount(amt);
         saleorder.setNetAmount(netamt);
-        saleorder.setDisc(amt-netamt);
+        saleorder.setDisc(amt - netamt);
         saleorder.setCustCode(custCode);
         System.out.println(saleorder);
         saleOrderRepository.save(saleorder);
@@ -153,7 +156,7 @@ public class orderController {
     }
 
     @GetMapping("/getOrder")
-    public String getOrder(@RequestParam(name = "orderNo",defaultValue = "1") Integer orderNo, Model model){
+    public String getOrder(@RequestParam(name = "orderNo", defaultValue = "1") Integer orderNo, Model model) {
         List<dailySales> orderProducts = dailySalesRepository.findByOrderNo(orderNo);
         saleOrder sale_order = saleOrderRepository.findByOrderNo(orderNo);
 
@@ -161,25 +164,23 @@ public class orderController {
         model.addAttribute("sale_order", sale_order);
         return "orderDisplay";
     }
-    @GetMapping("/user")
-    public String listUsers(Model model){
-        model.addAttribute("user",customerRepository.findAll());
-        return "users";
 
-    }
-    @GetMapping("/edit")
-    public String getCustomerById(@RequestParam(name="id", defaultValue = "1") Integer id,Model model){
-        model.addAttribute("user",customerRepository.findById(id));
-       return "edit";
-    }
-    @PostMapping("/update")
-    public String update(Model model, @ModelAttribute userModel user){
-        List<String> messages = new ArrayList<>();
-        userModelRepository.save(user);
-        model.addAttribute("messages",messages);
-        return "redirect:/";
+@GetMapping ("/order/edit/{orderNo}")
+    public String editOrderForm(Model model, @PathVariable("orderNo") Integer orderNo,  HttpSession session){
+    if (session.getAttribute("loggedIn").equals("yes")) {
 
+    model.addAttribute("order",dailySalesRepository.findByOrderNo(orderNo));
+    model.addAttribute("sales",saleOrderRepository.findByOrderNo(orderNo));
+    return "edit_order";
+}
+    List messages = new ArrayList<>();
+    messages.add("Login First");
+    model.addAttribute("messages", messages);
+    return "redirect:/login";
+}
 
-    }
 
 }
+
+
+

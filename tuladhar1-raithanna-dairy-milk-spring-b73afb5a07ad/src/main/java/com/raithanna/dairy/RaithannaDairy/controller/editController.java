@@ -1,7 +1,13 @@
 package com.raithanna.dairy.RaithannaDairy.controller;
 
-import com.raithanna.dairy.RaithannaDairy.models.*;
-import com.raithanna.dairy.RaithannaDairy.repositories.*;
+import com.raithanna.dairy.RaithannaDairy.models.customer;
+import com.raithanna.dairy.RaithannaDairy.models.dailySales;
+import com.raithanna.dairy.RaithannaDairy.models.productMaster;
+import com.raithanna.dairy.RaithannaDairy.models.saleOrder;
+import com.raithanna.dairy.RaithannaDairy.repositories.CustomerRepository;
+import com.raithanna.dairy.RaithannaDairy.repositories.DailySalesRepository;
+import com.raithanna.dairy.RaithannaDairy.repositories.ProductMasterRepository;
+import com.raithanna.dairy.RaithannaDairy.repositories.SaleOrderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -15,31 +21,25 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
+/*
 @Controller
-public class orderController {
-    @Autowired
-    private CustomerRepository customerRepository;
-
+public class editController {
     @Autowired
     private ProductMasterRepository productMasterRepository;
 
     @Autowired
+    private CustomerRepository customerRepository;
+    @Autowired
     private DailySalesRepository dailySalesRepository;
-
     @Autowired
     private SaleOrderRepository saleOrderRepository;
 
-    @Autowired
-   private UserModelRepository userModelRepository;
-
-    @RequestMapping("/createOrder")
-    public String createOrder_html(Model model, HttpSession session){
-        if (session.getAttribute("loggedIn").equals("yes")){
+    @GetMapping ("/editOrder/{orderNo}")
+    public String editOrder(Model model, HttpSession session) {
+        if (session.getAttribute("loggedIn").equals("yes")) {
             Iterable<customer> CustomersIterable = customerRepository.findAll();
             Iterable<dailySales> dailysales = dailySalesRepository.findAll();
             List<Integer> orderNos = new ArrayList<>();
-            List<customer> Customers = new ArrayList<>();
             for (dailySales i : dailysales) {
                 orderNos.add(i.getOrderNo());
             }
@@ -48,11 +48,10 @@ public class orderController {
             if (!orderNos.isEmpty()) {
                 orderNo = Integer.parseInt(String.valueOf(orderNos.get(orderNos.size() - 1))) + 1;
             }
-
+            List<customer> Customers = new ArrayList<>();
             for (customer Customer : CustomersIterable) {
                 Customers.add(Customer);
             }
-
             Iterable<productMaster> Products = productMasterRepository.findBySplCustCode(Customers.get(0).getCode().toString());
             int size = 0;
             for (productMaster value : Products) {
@@ -63,16 +62,43 @@ public class orderController {
             }
             model.addAttribute("customers", Customers);
             model.addAttribute("products", Products);
-            model.addAttribute("orderNo", orderNo);
             model.addAttribute("dateTime", LocalDate.now());
-            return "createOrder";
+            return "editOrder";
+
+
         }
         List messages = new ArrayList<>();
         messages.add("Login First");
         model.addAttribute("messages", messages);
         return "redirect:/login";
     }
-    @PostMapping( "/getproductValues")
+        @PostMapping("/editOrder")
+        public String editOrder(Model model, @ModelAttribute dailySales order, @RequestParam Map<String,String> orderDetails, HttpServletRequest
+        request, HttpSession session) throws InterruptedException {
+            List<String> messages = new ArrayList<>();
+            System.out.println(orderDetails);
+            order.setOrderNo(Integer.parseInt(orderDetails.get("orderDetails[orderNo]")));
+            order.setCustCode(orderDetails.get("orderDetails[custCode]"));
+            order.setDisc(Double.parseDouble(orderDetails.get("orderDetails[disc]")));
+            order.setNetAmount(Double.parseDouble(orderDetails.get("orderDetails[netAmount]")));
+            order.setAmount(Double.parseDouble(orderDetails.get("orderDetails[amount]")));
+            order.setProdCode(orderDetails.get("orderDetails[prodCode]"));
+            order.setQuantity(Double.parseDouble(orderDetails.get("orderDetails[quantity]")));
+            order.setUnitRate(Double.parseDouble(orderDetails.get("orderDetails[unitRate]")));
+            System.out.println(order);
+            System.out.println("@107");
+            try{
+                dailySalesRepository.save(order);}
+
+            catch (Exception handlerException){
+                messages.add("Error Creating the order pls retry");
+                model.addAttribute("messages",messages);
+                return "/createOrder";
+            }
+            model.addAttribute("messages",messages);
+            return "redirect:/";
+        }
+        @PostMapping( "/getproductValues")
     public ResponseEntity<?> getproductRatesByCustcode(@RequestParam Map<String,String> body, Model model){
         System.out.println(body);
         productMaster product = productMasterRepository.findBySplCustCodeAndPCode(body.get("code"), body.get("pcode"));
@@ -90,32 +116,6 @@ public class orderController {
         respBody.putIfAbsent("ttlValue", String.valueOf((product.getUnitRate()-Integer.parseInt(body.get("disc")))*Integer.parseInt(body.get("qty"))));
         return ResponseEntity.ok(respBody);
     }
-    @PostMapping("/createOrder")
-    public String createOrder(Model model, @ModelAttribute dailySales order,@RequestParam Map<String,String> orderDetails, HttpServletRequest request, HttpSession session) throws InterruptedException {
-        List<String> messages = new ArrayList<>();
-        System.out.println(orderDetails);
-        order.setOrderNo(Integer.parseInt(orderDetails.get("orderDetails[orderNo]")));
-        order.setCustCode(orderDetails.get("orderDetails[custCode]"));
-        order.setDisc(Double.parseDouble(orderDetails.get("orderDetails[disc]")));
-        order.setNetAmount(Double.parseDouble(orderDetails.get("orderDetails[netAmount]")));
-        order.setAmount(Double.parseDouble(orderDetails.get("orderDetails[amount]")));
-        order.setProdCode(orderDetails.get("orderDetails[prodCode]"));
-        order.setQuantity(Double.parseDouble(orderDetails.get("orderDetails[quantity]")));
-        order.setUnitRate(Double.parseDouble(orderDetails.get("orderDetails[unitRate]")));
-        System.out.println(order);
-        System.out.println("@107");
-        try{
-            dailySalesRepository.save(order);}
-
-        catch (Exception handlerException){
-            messages.add("Error Creating the order pls retry");
-            model.addAttribute("messages",messages);
-            return "/createOrder";
-        }
-        model.addAttribute("messages",messages);
-        return "redirect:/";
-    }
-
     @PostMapping("/createSaleOrder")
     public String createSaleOrder(@RequestParam String orderNo){
         List<dailySales> orderProducts = dailySalesRepository.findByOrderNo(Integer.parseInt(orderNo));
@@ -124,7 +124,7 @@ public class orderController {
             if (orderProducts.isEmpty()){
                 orderProducts = dailySalesRepository.findByOrderNo(Integer.parseInt(orderNo));
             }else{
-            break;
+                break;
             }
         }
         System.out.println(orderProducts.size());
@@ -161,25 +161,7 @@ public class orderController {
         model.addAttribute("sale_order", sale_order);
         return "orderDisplay";
     }
-    @GetMapping("/user")
-    public String listUsers(Model model){
-        model.addAttribute("user",customerRepository.findAll());
-        return "users";
-
-    }
-    @GetMapping("/edit")
-    public String getCustomerById(@RequestParam(name="id", defaultValue = "1") Integer id,Model model){
-        model.addAttribute("user",customerRepository.findById(id));
-       return "edit";
-    }
-    @PostMapping("/update")
-    public String update(Model model, @ModelAttribute userModel user){
-        List<String> messages = new ArrayList<>();
-        userModelRepository.save(user);
-        model.addAttribute("messages",messages);
-        return "redirect:/";
 
 
-    }
 
-}
+}*/
