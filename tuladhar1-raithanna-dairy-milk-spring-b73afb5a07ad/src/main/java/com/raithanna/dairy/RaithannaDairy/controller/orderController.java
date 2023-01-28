@@ -165,22 +165,92 @@ public class orderController {
         return "orderDisplay";
     }
 
-@GetMapping ("/order/edit/{orderNo}")
-    public String editOrderForm(Model model, @PathVariable("orderNo") Integer orderNo,  HttpSession session){
-    if (session.getAttribute("loggedIn").equals("yes")) {
+    @GetMapping("/order/view/{orderNo}")
+    public String viewOrderForm(Model model, @PathVariable(name = "orderNo") Integer orderNo, HttpSession session) {
+        if (session.getAttribute("loggedIn").equals("yes")) {
+            // List<dailySales> orders = dailySalesRepository.findByOrderNo(orderNo);
+            model.addAttribute("orders",dailySalesRepository.findByOrderNo(orderNo));
+            model.addAttribute("sales",saleOrderRepository.findByOrderNo(orderNo));
+            return "view_order";
+        }
+        List messages = new ArrayList<>();
+        messages.add("Login First");
+        model.addAttribute("messages", messages);
+        return "redirect:/login";
+    }
 
-    model.addAttribute("order",dailySalesRepository.findByOrderNo(orderNo));
-    model.addAttribute("sales",saleOrderRepository.findByOrderNo(orderNo));
-    return "edit_order";
-}
-    List messages = new ArrayList<>();
-    messages.add("Login First");
-    model.addAttribute("messages", messages);
-    return "redirect:/login";
+    @GetMapping("/orders/edit/{orderNo}")
+    public String editOrderForm(Model model, @PathVariable Integer orderNo,HttpSession session) {
+        if (session.getAttribute("loggedIn").equals("yes")) {
+            Iterable<customer> CustomersIterable = customerRepository.findAll();
+            List<customer> Customers = new ArrayList<>();
+            for (customer Customer : CustomersIterable) {
+                Customers.add(Customer);
+            }
+            Iterable<productMaster> Products = productMasterRepository.findBySplCustCode(Customers.get(0).getCode().toString());
+            int size = 0;
+            for (productMaster value : Products) {
+                size++;
+            }
+            if (size == 0) {
+                Products = productMasterRepository.findBySplCustCode("");
+            }
+            model.addAttribute("orders", dailySalesRepository.findByOrderNo(orderNo));
+            model.addAttribute("sales", saleOrderRepository.findByOrderNo(orderNo));
+            model.addAttribute("customers", Customers);
+            model.addAttribute("products", Products);
+            return "edit_order";
+        }
+        List messages = new ArrayList<>();
+        messages.add("Login First");
+        model.addAttribute("messages", messages);
+        return "redirect:/login";
+    }
+
+   @PostMapping("orders/orderNo")
+    public String updateOrder(Model model, @PathVariable Integer orderNo, @ModelAttribute dailySales order, @RequestParam Map<String, String> orderDetails) {
+        System.out.println(orderDetails);
+        order.setOrderNo(Integer.parseInt(orderDetails.get("orderDetails[orderNo]")));
+        order.setCustCode(orderDetails.get("orderDetails[custCode]"));
+        order.setDisc(Double.parseDouble(orderDetails.get("orderDetails[disc]")));
+        order.setNetAmount(Double.parseDouble(orderDetails.get("orderDetails[netAmount]")));
+        order.setAmount(Double.parseDouble(orderDetails.get("orderDetails[amount]")));
+        order.setProdCode(orderDetails.get("orderDetails[prodCode]"));
+        order.setQuantity(Double.parseDouble(orderDetails.get("orderDetails[quantity]")));
+        order.setUnitRate(Double.parseDouble(orderDetails.get("orderDetails[unitRate]")));
+        System.out.println(order);
+        dailySalesRepository.save(order);
+        return "redirect:/";
+    }
+
+
+
+
+    /*@PostMapping("orders/{orderNo}")
+    public String updateOrder(@PathVariable Integer orderNo,@ModelAttribute dailySales order,@RequestParam Map<String, String> orderDetails,Model model){
+        List<dailySales> existingorder=dailySalesRepository.findByOrderNo(orderNo);
+
+         
+        existingorder.setCustCode(order.getCustCode());
+        existingorder.setDisc(order.getDisc());
+           existingorder.setNetAmount(order.getNetAmount());
+        existingorder.setAmount(order.getAmount());
+          existingorder.setProdCode(order.getProdCode());
+           existingorder.setQuantity(order.getQuantity());
+         existingorder.setUnitRate(order.getUnitRate());
+
+dailySalesRepository.save(existingorder);
+
+return "redirect:/";
+        System.out.println(order);
+        dailySalesRepository.save(order);
+        return "redirect:/";
+    }*/
+
 }
 
 
-}
+
 
 
 

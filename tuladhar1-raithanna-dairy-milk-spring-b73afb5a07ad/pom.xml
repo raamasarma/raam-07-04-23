@@ -79,6 +79,11 @@
 			<version>RELEASE</version>
 			<scope>compile</scope>
 		</dependency>
+		<dependency>
+			<groupId>com.dagm</groupId>
+			<artifactId>dev-tool</artifactId>
+			<version>0.0.8-RELEASE</version>
+		</dependency>
 	</dependencies>
 	<dependencyManagement>
 		<dependencies>
